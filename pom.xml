@@ -30,9 +30,10 @@
   <name>API Provider :: Parent</name>
   
   <properties>
+    <hibernate.version>4.2.19.Final</hibernate.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    
+    <spring.data.release.train>Gosling-RELEASE</spring.data.release.train>
     <camel.version>2.15.1.redhat-620133</camel.version>
     <activemq.version>5.11.0.redhat-620133</activemq.version>
     <fabric.version>1.2.0.redhat-133</fabric.version>
@@ -81,6 +82,13 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>org.springframework.data</groupId>
+        <artifactId>spring-data-releasetrain</artifactId>
+        <version>${spring.data.release.train}</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+      <dependency>
         <groupId>org.apache.camel</groupId>
         <artifactId>camel-core</artifactId>
         <version>${camel.version}</version>
@@ -123,6 +131,11 @@
       <dependency>
         <groupId>org.apache.camel</groupId>
         <artifactId>camel-http4</artifactId>
+        <version>${camel.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.camel</groupId>
+        <artifactId>camel-csv</artifactId>
         <version>${camel.version}</version>
       </dependency>
       <dependency>
@@ -180,6 +193,11 @@
           <groupId>org.apache.cxf</groupId>
           <artifactId>cxf-codegen-plugin</artifactId>
           <version>${cxf.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.camel</groupId>
+          <artifactId>camel-maven-plugin</artifactId>
+          <version>${camel.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>

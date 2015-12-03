@@ -16,6 +16,12 @@
  */
 package org.jboss.fuse.examples.rest;
 
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
 public class Organization {
 
     private int org_id;
@@ -33,11 +39,15 @@ public class Organization {
         this.org_id = id;
     }
 
+    @Id
+    @Column(name = "org_id", nullable = false)
+    @GeneratedValue
     public int getOrg_id() {
 		return org_id;
 	}
 
-	public String getOrg_name() {
+    @Column(name = "org_name", nullable = false)
+    public String getOrg_name() {
         return org_name;
     }
 

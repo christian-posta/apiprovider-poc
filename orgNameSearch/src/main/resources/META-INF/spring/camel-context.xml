@@ -15,56 +15,72 @@
 -->
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xmlns:osgi="http://www.springframework.org/schema/osgi"
-       xmlns:osgix="http://www.springframework.org/schema/osgi-compendium"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
        xsi:schemaLocation="
           http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
           http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
-          http://www.springframework.org/schema/osgi
-  		  http://www.springframework.org/schema/osgi/spring-osgi.xsd
-  		  http://www.springframework.org/schema/osgi-compendium http://www.springframework.org/schema/osgi-compendium/spring-osgi-compendium.xsd">
-  		  
-  <import resource="classpath*:/META-INF/spring/common.xml" /> 
-  
-  <osgix:cm-properties id="properties" persistent-id="org.jboss.fuse.examples.orgNameSearch">
-    <prop key="http.port">8181</prop>
-    <prop key="http.contextPath">/orgNameSearch/rest</prop>
-  </osgix:cm-properties>
-  
-  <bean id="bridgePropertyPlaceholder" class="org.apache.camel.spring.spi.BridgePropertyPlaceholderConfigurer">
-    <property name="properties" ref="properties"/>
+  		  http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+
+  <import resource="classpath*:/META-INF/spring/common.xml"/>
+
+  <jpa:repositories base-package="org.jboss.fuse.examples.repositories"/>
+
+
+  <bean id="orgCollection" class="org.jboss.fuse.examples.rest.OrganizationCollection">
+    <property name="repository" ref="organizationRepository"/>
   </bean>
-  
-<!-- Swap-in Oracle instead of Derby during onsite workshop -->
-<!-- 	        <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close"> -->
-<!-- 	            <property name="driverClassName" value="oracle.jdbc.OracleDriver"/> -->
-<!-- 	            <property name="url" value="jdbc:oracle:thin:@//{{sample1b.jdbc.hostname}}:{{sample1b.jdbc.port}}/{{sample1b.jdbc.sid}}"/> -->
-<!-- 	            <property name="username" value="{{sample1b.jdbc.username}}"/> -->
-<!-- 	            <property name="password" value="{{sample1b.jdbc.password}}"/> -->
-<!-- 	            <property name="maxIdle" value="3"/> -->
-<!-- 	            <property name="maxActive" value="6"/> -->
-<!-- 	        </bean> -->
-  
-	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
-  		<property name="driverClassName" value="org.apache.derby.jdbc.EmbeddedDriver"/>
-  		<property name="url" value="jdbc:derby:memory:orders;create=true"/>
-  		<property name="username" value=""/>
-  		<property name="password" value=""/>
-	</bean>
-  
-	<bean id="sql" class="org.apache.camel.component.sql.SqlComponent">
- 		<property name="dataSource" ref="dataSource"/>	    		
-	</bean>
-	
-  <!-- bean which creates/destroys the database table for this example -->
-  <bean id="initDatabase" class="org.jboss.fuse.examples.jdbc.DatabaseBean" init-method="create" destroy-method="destroy">
+
+
+  <!-- Swap-in Oracle instead of Derby during onsite workshop -->
+  <!-- 	        <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close"> -->
+  <!-- 	            <property name="driverClassName" value="oracle.jdbc.OracleDriver"/> -->
+  <!-- 	            <property name="url" value="jdbc:oracle:thin:@//{{sample1b.jdbc.hostname}}:{{sample1b.jdbc.port}}/{{sample1b.jdbc.sid}}"/> -->
+  <!-- 	            <property name="username" value="{{sample1b.jdbc.username}}"/> -->
+  <!-- 	            <property name="password" value="{{sample1b.jdbc.password}}"/> -->
+  <!-- 	            <property name="maxIdle" value="3"/> -->
+  <!-- 	            <property name="maxActive" value="6"/> -->
+  <!-- 	        </bean> -->
+
+  <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+    <property name="driverClassName" value="org.apache.derby.jdbc.EmbeddedDriver"/>
+    <property name="url" value="jdbc:derby:memory:orders;create=true"/>
+    <property name="username" value=""/>
+    <property name="password" value=""/>
+  </bean>
+
+  <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
     <property name="dataSource" ref="dataSource"/>
   </bean>
-  		  
+
+  <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+    <property name="dataSource" ref="dataSource"/>
+    <property name="persistenceXmlLocation" value="classpath:/META-INF/persistence.xml"/>
+    <property name="persistenceUnitName" value="sample"/>
+    <!-- spring based scanning for entity classes>-->
+    <property name="packagesToScan" value="org.jboss.fuse.examples.rest"/>
+  </bean>
+
+  <bean id="transactionManager"
+        class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+    <property name="sessionFactory" ref="sessionFactory"/>
+    <property name="dataSource" ref="dataSource"/>
+  </bean>
+
+  <bean id="sql" class="org.apache.camel.component.sql.SqlComponent">
+    <property name="dataSource" ref="dataSource"/>
+  </bean>
+
+  <!-- bean which creates/destroys the database table for this example -->
+  <bean id="initDatabase" class="org.jboss.fuse.examples.jdbc.DatabaseBean" init-method="create"
+        destroy-method="destroy">
+    <property name="dataSource" ref="dataSource"/>
+  </bean>
+
   <camelContext id="orgNameSearchContext" xmlns="http://camel.apache.org/schema/spring">
-    <routeContextRef ref="jmsUseCaseRoutes" />
+    <routeContextRef ref="jmsUseCaseRoutes"/>
     <dataFormats>
-      <json id="queryRequest" library="Jackson" unmarshalTypeName="org.jboss.fuse.examples.jms.OrganizationQueryRequest"/>
+      <json id="queryRequest" library="Jackson"
+            unmarshalTypeName="org.jboss.fuse.examples.jms.OrganizationQueryRequest"/>
       <json id="organization" library="Jackson" unmarshalTypeName="org.jboss.fuse.examples.rest.Organization"/>
     </dataFormats>
 
@@ -75,12 +91,11 @@
          knows the url to the REST services.
          Notice: This is optional, but needed if the RestRegistry should enlist accurate information.
          You can access the RestRegistry from JMX at runtime -->
-   
-        <restConfiguration component="servlet" bindingMode="json">
-      		<componentProperty key="contextPath" value="${http.contextPath}"/>
-      		<componentProperty key="port" value="${http.port}"/>
-      		<dataFormatProperty key="prettyPrint" value="true"/>
-    	</restConfiguration>
+
+    <restConfiguration component="netty-http" bindingMode="json" port="8182">
+      <componentProperty key="contextPath" value="/orgNameSearch/rest"/>
+      <dataFormatProperty key="prettyPrint" value="true"/>
+    </restConfiguration>
 
     <!-- defines the rest services using the context-path /organization -->
     <rest path="/orgNameSearch" consumes="application/json" produces="application/json">
@@ -89,28 +104,28 @@
       <!-- this is a rest GET to view an organization by the given id -->
       <get uri="/{id}" outType="org.jboss.fuse.examples.rest.Organization">
         <description>Find organization by ord_id</description>
-		<to uri="direct:orgById"/>
+        <to uri="direct:orgById"/>
       </get>
-      
-	<!-- this is a rest GET to view paginated results using a partial organization name -->
-	<get uri="/{partialOrgName}/{pageNumber}/{pageSize}" outType="org.jboss.fuse.examples.rest.Organization">
-		<description>Find organization by partial organization name and then return paginated results</description>
-		<to uri="direct:paginate" />
-	</get>
-      
+
+      <!-- this is a rest GET to view paginated results using a partial organization name -->
+      <get uri="/{pageNumber}/{pageSize}" outType="org.jboss.fuse.examples.rest.Organization">
+        <description>Find organization by partial organization name and then return paginated results</description>
+        <to uri="direct:paginate"/>
+      </get>
+
       <!-- this is a rest PUT to create/update an Organization -->
       <put type="org.jboss.fuse.examples.rest.Organization">
         <description>Updates or create an organization</description>
-		<to uri="direct:putOrganization"/>
+        <to uri="direct:putOrganization"/>
       </put>
 
       <!-- this is a rest GET to find all organizations -->
       <get uri="/findAll" outType="org.jboss.fuse.examples.rest.Organization[]">
         <description>Find all organizations</description>
-	  	<to uri="direct:findAll"/>
+        <to uri="direct:findAll"/>
       </get>
     </rest>
-    
+
     <!-- defines the JMS rest services using the context-path /jms/organization -->
     <rest path="/jms/orgNameSearch" consumes="application/json" produces="application/json">
       <description>Organization JMS rest service</description>
@@ -118,89 +133,70 @@
       <!-- this is a rest GET to view an organization by the given id -->
       <get uri="/{id}" outType="org.jboss.fuse.examples.rest.Organization">
         <description>Find organization by ord_id</description>
-		<to uri="direct:orgById"/>
+        <to uri="direct:orgById"/>
       </get>
-      
-      	<!-- this is a rest GET to view paginated results using a partial organization name -->
-		<get uri="/{partialOrgName}/{pageNumber}/{pageSize}" outType="org.jboss.fuse.examples.rest.Organization">
-			<description>Find organization by partial organization name and then return paginated results</description>
-			<to uri="direct:paginate" />
-		</get>
+
+      <!-- this is a rest GET to view paginated results using a partial organization name -->
+      <get uri="/{pageNumber}/{pageSize}" outType="org.jboss.fuse.examples.rest.Organization">
+        <description>Find organization by partial organization name and then return paginated results</description>
+        <to uri="direct:paginate"/>
+      </get>
 
       <!-- this is a rest PUT to create/update an Organization -->
       <put type="org.jboss.fuse.examples.rest.Organization">
         <description>Updates or create an organization</description>
-		<to uri="direct:putOrganization"/>
+        <to uri="direct:putOrganization"/>
       </put>
 
       <!-- this is a rest GET to find all organizations -->
       <get uri="/findAll" outType="org.jboss.fuse.examples.rest.Organization[]">
         <description>Find all organizations</description>
-		<to uri="direct:findAll"/>
+        <to uri="direct:findAll"/>
       </get>
     </rest>
-    
-    <route id="populateDB" startupOrder="1">
-      	<from uri="file:src/data?noop=true"/>
-      	<unmarshal>
-      		<csv />
-      	</unmarshal>
-        <split>
-        	<simple>${body}</simple>
-			<to uri="sql:insert into ORGANIZATION (org_id, org_name) values (#,#)" />
-		</split>
-		<log message="Updated organization database."/>
-    </route>
-    
-	<route id="putOrganization">
-		<from uri="direct:putOrganization"/>
-            <setHeader headerName="org_id">
-                <simple>${body.org_id}</simple>
-            </setHeader>
-            <setHeader headerName="org_name">
-                <simple>${body.org_name}</simple>
-            </setHeader>
-	        <to uri="sql:select org_id, org_name from organization where org_id=:#org_id"/>   
-	        <choice>
-	        	<when>
-	        		<simple>${header.CamelSqlRowCount} > 0</simple>
-					<to uri="sql:update organization set org_name=:#org_name where org_id=:#org_id"/>
-	        	</when>
-	        	<otherwise>
-	        		<to uri="sql:insert INTO organization (org_id, org_name) VALUES (:#org_id,:#org_name )"/>
-	        	</otherwise>
-	        </choice>
-	        <to uri="sql:select org_id, org_name from organization where org_id=:#org_id"/>
-		   	<setHeader headerName="node">
-		    	<constant>1</constant>
-		    </setHeader>   
-	</route>
-	
-	<route id="paginate">
-		<from uri="direct:paginate"/>
-		<setHeader headerName="partialOrgNameWildcard">
-		  <simple>%${header.partialOrgName}%</simple>
-		</setHeader>
-		<to uri="sql:select org_id, org_name from organization where org_name like :#partialOrgNameWildcard offset :#pageNumber rows fetch first :#pageSize rows only" />
-        <setHeader headerName="node">
-        	<constant>1</constant>
-        </setHeader>   
-	</route>
 
-	  <route id="orgById">
-	  		<from uri="direct:orgById"/>
-	        <to uri="sql:select org_id, org_name from organization where org_id=:#id"/>
-	        <setHeader headerName="node">
-	        	<constant>1</constant>
-	        </setHeader>   
-	  </route>
-	  
-	  <route id="findAll">
-	  		<from uri="direct:findAll"/>
-        	<to uri="sql:select org_id, org_name from organization"/>   
-	        <setHeader headerName="node">
-	        	<constant>1</constant>
-	        </setHeader>   
-	  </route>
+    <route id="populateDB" startupOrder="1">
+      <from uri="file:src/data?noop=true"/>
+      <unmarshal>
+        <csv/>
+      </unmarshal>
+      <split>
+        <simple>${body}</simple>
+        <to uri="sql:insert into ORGANIZATION (org_id, org_name) values (#,#)"/>
+      </split>
+      <log message="Updated organization database."/>
+    </route>
+
+    <route id="putOrganization">
+      <from uri="direct:putOrganization"/>
+      <bean ref="orgCollection" method="insertNewOrganization"/>
+      <setHeader headerName="node">
+        <constant>1</constant>
+      </setHeader>
+    </route>
+
+    <route id="paginate">
+      <from uri="direct:paginate"/>
+      <bean ref="orgCollection" method="findOrganizationWithPagination"/>
+      <setHeader headerName="node">
+        <constant>1</constant>
+      </setHeader>
+    </route>
+
+    <route id="orgById">
+      <from uri="direct:orgById"/>
+      <bean ref="orgCollection" method="findById"/>
+      <setHeader headerName="node">
+        <constant>1</constant>
+      </setHeader>
+    </route>
+
+    <route id="findAll">
+      <from uri="direct:findAll"/>
+      <bean ref="orgCollection" method="findAll"/>
+      <setHeader headerName="node">
+        <constant>1</constant>
+      </setHeader>
+    </route>
   </camelContext>
 </beans>
